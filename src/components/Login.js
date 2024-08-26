@@ -1,12 +1,22 @@
 import React, { useRef, useState } from "react";
 import Header from "./Header";
 import { checkValidEmail, checkValidPassword } from "../utils/validate";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { auth } from "../utils/firebase";
+import { useDispatch } from "react-redux";
+import { addUser } from "../utils/userSlice";
 
 const Login = () => {
   const [isSignInForm, setIsSignInForm] = useState(true);
   const [emailErrorMessage, setEmailErrorMessage] = useState(null);
   const [passwordErrorMessage, setPasswordErrorMessage] = useState(null);
+  const dispatch = useDispatch();
 
+  const name = useRef(null);
   const email = useRef(null);
   const password = useRef(null);
 
@@ -15,10 +25,59 @@ const Login = () => {
   };
 
   const handleClickButton = () => {
-    const EmailMessage = checkValidEmail(email.current.value);
+    const emailMessage = checkValidEmail(email.current.value);
     const passwordMessage = checkValidPassword(password.current.value);
-    setEmailErrorMessage(EmailMessage);
+    setEmailErrorMessage(emailMessage);
     setPasswordErrorMessage(passwordMessage);
+
+    if (emailMessage || passwordMessage) return;
+    if (!isSignInForm) {
+      createUserWithEmailAndPassword(
+        auth,
+        email.current.value,
+        password.current.value
+      )
+        .then((userCredential) => {
+          const user = userCredential.user;
+          updateProfile(user, {
+            displayName: name.current.value,
+            photoURL: "https://example.com/jane-q-user/profile.jpg",
+          })
+            .then(() => {
+              const { uid, email, displayName, photoURL } = auth.currentUser;
+              dispatch(
+                addUser({
+                  uid: uid,
+                  email: email,
+                  displayName: displayName,
+                  photoURL: photoURL,
+                })
+              );
+            })
+            .catch((error) => {});
+        })
+        .catch((error) => {
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          setPasswordErrorMessage(errorCode + " " + errorMessage);
+        });
+    } else {
+      signInWithEmailAndPassword(
+        auth,
+        email.current.value,
+        password.current.value
+      )
+        .then((userCredential) => {
+          // Signed in
+          // const user = userCredential.user;
+          // ...
+        })
+        .catch((error) => {
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          setPasswordErrorMessage(errorCode + " " + errorMessage);
+        });
+    }
   };
 
   return (
@@ -41,9 +100,10 @@ const Login = () => {
 
         {!isSignInForm && (
           <input
+            ref={name}
             type="text"
             placeholder="Full Name"
-            className="p-4 my-4 w-full bg-[#161719] border border-gray-500"
+            className="p-4 my-4 w-full bg-[#161719] border border-gray-500 rounded"
           />
         )}
 
@@ -51,21 +111,17 @@ const Login = () => {
           ref={email}
           type="text"
           placeholder="Email Address"
-          className="p-4 my-4 w-full bg-[#161719] border border-gray-500"
+          className="p-4 my-4 w-full bg-[#161719] border border-gray-500 rounded"
         />
-        <p className="text-red-500 font-thin text-sm">
-          {emailErrorMessage}
-        </p>
+        <p className="text-red-500 font-thin text-sm">{emailErrorMessage}</p>
         <input
           ref={password}
           type="password"
           placeholder="Password"
-          className="p-4 my-4 w-full bg-[#161719] border border-gray-500"
+          className="p-4 my-4 w-full bg-[#161719] border border-gray-500 rounded"
         />
 
-        <p className="text-red-500 font-thin text-sm">
-          {passwordErrorMessage}
-        </p>
+        <p className="text-red-500 font-thin text-sm">{passwordErrorMessage}</p>
 
         <button
           onClick={handleClickButton}
