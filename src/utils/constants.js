@@ -31,3 +31,6 @@ export const SUPPORTED_LANGUAGES = [
     name: "Spanish",
   },
 ];
+
+export const OPENAI_KEY =
+  "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";
